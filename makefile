@@ -1,13 +1,13 @@
 CFLAGS = -std=c++17 -O2
 LDFLAGS = -lglfw -lvulkan -ldl -lpthread -lX11 -lXxf86vm -lXrandr -lXi
 
-VulkanTest: main.cc
-	g++ $(CFLAGS) -o VulkanTest main.cc $(LDFLAGS)
+vkExperiment: main.cc
+	g++ $(CFLAGS) -o vkExperiment main.cc $(LDFLAGS)
 
 .PHONY: test clean
 
-test: VulkanTest
-	./VulkanTest
+test: vkExperiment
+	./vkExperiment
 
 clean:
-	rm -f VulkanTest
+	rm -f vkExperiment
