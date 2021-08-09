@@ -7,7 +7,6 @@ void app::init_window() {
 	window = glfwCreateWindow(width, height, "Vulkan", nullptr, nullptr);
 }
 
-
 bool checkValidationLayerSupport() {
     uint32_t layerCount;
     vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
@@ -15,15 +14,14 @@ bool checkValidationLayerSupport() {
     vkEnumerateInstanceLayerProperties(&layerCount, availableLayers.data());
 	for (const char* layerName : validationLayers) {
 	    bool layerFound = false;
-	    for (const auto& layerProperties : availableLayers) {
+	    for (const auto& layerProperties : availableLayers)
 	        if (strcmp(layerName, layerProperties.layerName) == 0) {
 	            layerFound = true;
 	            break;
 	        }
-	    }
-	    if (!layerFound) {
+
+	    if (!layerFound)
 	        return false;
-	    }
 	}
 	return true;
 }
@@ -64,6 +62,22 @@ void app::create_instance() {
 	auto glfw_extensions = getRequiredExtensions();
 	createInfo.enabledExtensionCount = static_cast<uint32_t>(glfw_extensions.size());
 	createInfo.ppEnabledExtensionNames = glfw_extensions.data();
+
+	// special handling of the debug callback, in order to report any issues with instance creation
+    VkDebugUtilsMessengerCreateInfoEXT debugCreateInfo{};
+    if (enableValidationLayers) {
+        createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+        createInfo.ppEnabledLayerNames = validationLayers.data();
+
+		debugCreateInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+		debugCreateInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+		debugCreateInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+		debugCreateInfo.pfnUserCallback = debugCallback;
+        createInfo.pNext = (VkDebugUtilsMessengerCreateInfoEXT*) &debugCreateInfo;
+    } else {
+        createInfo.enabledLayerCount = 0;
+        createInfo.pNext = nullptr;
+    }
 
 	// create the instance with the specified info, report failure
 	if (vkCreateInstance(&createInfo, nullptr, &instance) != VK_SUCCESS)
