@@ -7,10 +7,12 @@
 #include <glm/mat4x4.hpp>
 
 #include <iostream>
+using std::endl, std::cout, std::cin, std::cerr;
 #include <stdexcept>
 #include <cstdlib>
 #include <cstring>
 #include <vector>
+#include <optional> // for the vulkan-tutorial style handling of the QueueFamilyIndices
 
 
 constexpr uint32_t width = 800;
@@ -27,8 +29,7 @@ constexpr bool enableValidationLayers = false;
 
 class app {
 public:
-	// high level program structure
-    void run() {
+    void run() { // high level program structure
         init_window();
         init_Vulkan();
         main_loop();
@@ -46,22 +47,31 @@ private:
 		create_instance();
 		list_extensions();
 		init_debug_callback();
+		pick_physical_device();
+		create_logical_device();
 	}
 
-	// init helper functions
+// init helper functions
+	// creates a Vulkan instance
 	void create_instance();
+	// vulkan driver capabilities
 	void list_extensions();
+	// debug callback
 	VkDebugUtilsMessengerEXT debugMessenger;
 	void init_debug_callback();
 	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
 	    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
 	    VkDebugUtilsMessageTypeFlagsEXT messageType,
 	    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-	    void* pUserData) {
+	    void* pUserData) { // just defined here because the prototype is almost as long as the function
 		if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) // Message is important enough to show
-			std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
+			cerr << "validation layer: " << pCallbackData->pMessage << endl;
 	    return VK_FALSE;
 	}
+	// physical device selection
+	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+	void pick_physical_device();
+	void create_logical_device();
 
 	// contains program main loop behavior
     void main_loop();

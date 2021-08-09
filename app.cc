@@ -85,6 +85,8 @@ void app::create_instance() {
 }
 
 void app::list_extensions() {
+	if(!enableValidationLayers) return;
+
 	// get the list of supported extensions
 	uint32_t extension_count = 0;
 	vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr);
@@ -125,6 +127,69 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
         func(instance, debugMessenger, pAllocator);
 }
 
+
+struct QueueFamilyIndices {
+    std::optional<uint32_t> graphics_family;
+	bool found(){ return graphics_family.has_value(); }
+};
+
+QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) {
+    QueueFamilyIndices indices;
+
+    // Assign index to queue families that could be found
+	uint32_t queueFamilyCount = 0;
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+	std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
+	vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies.data());
+
+	int i = 0; // iterate through queue families and determine if we have at least one graphics queue
+	for (const auto& queueFamily : queueFamilies) {
+	    if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
+	        indices.graphics_family = i;
+		if (indices.found()) break;
+	    i++;
+	}
+    return indices;
+}
+
+// if you have multiple devices, you might want to check for some hardware capabilities
+// this can also be useful for confirming a device is capable of what you want from it
+// interesting idea of using a scoring methodology to choose from multiple devices here:
+//   https://vulkan-tutorial.com/Drawing_a_triangle/Setup/Physical_devices_and_queue_families#page_Base-device-suitability-checks
+bool is_device_suitable(VkPhysicalDevice device) {
+	// https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VkPhysicalDeviceProperties.html
+	VkPhysicalDeviceProperties deviceProperties;
+	vkGetPhysicalDeviceProperties(device, &deviceProperties);
+
+	// https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VkPhysicalDeviceFeatures.html
+	VkPhysicalDeviceFeatures deviceFeatures;
+	vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+
+	cout << endl << "Located " << deviceProperties.deviceName << endl; // report deviceName string
+
+	// for now, we are just making sure that we have at least one graphics queue
+	QueueFamilyIndices indices = findQueueFamilies(device);
+	return indices.found();
+}
+
+void app::pick_physical_device() {
+	uint32_t deviceCount = 0;
+	vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
+	if (deviceCount == 0) throw std::runtime_error("No GPUs with Vulkan support found!");
+	std::vector<VkPhysicalDevice> devices(deviceCount);
+	vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
+	for (const auto& device : devices)
+	    if (is_device_suitable(device)) {
+	        physicalDevice = device;
+	        break;
+	    }
+
+	if (physicalDevice == VK_NULL_HANDLE) throw std::runtime_error("failed to find a suitable GPU!");
+}
+
+void app::create_logical_device() {
+
+}
 
 // main loop for runtime operations (input, etc)
 void app::main_loop() {
