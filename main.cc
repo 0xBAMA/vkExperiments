@@ -7,32 +7,55 @@
 #include <glm/mat4x4.hpp>
 
 #include <iostream>
+#include <stdexcept>
+#include <cstdlib>
+
+constexpr uint32_t width = 800;
+constexpr uint32_t height = 600;
+
+class app {
+    public:
+        void run() {
+            init_window();
+            init_Vulkan();
+            main_loop();
+            cleanup();
+        }
+    private:
+        GLFWwindow* window;
+        void init_window(){
+            glfwInit();
+            glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+            window = glfwCreateWindow(width, height, "Vulkan", nullptr, nullptr);
+        }
+
+        void init_Vulkan(){
+            uint32_t extensionCount = 0;
+            vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+            std::cout << extensionCount << " extensions supported\n";
+        }
+
+        void main_loop(){
+            while(!glfwWindowShouldClose(window)){
+                glfwPollEvents();
+            }
+        }
+
+        void cleanup(){
+            glfwDestroyWindow(window);
+            glfwTerminate();
+        }
+};
+
+
+
+
 
 int main(int argc, char const *argv[]) {
-
-	// create GLFW window
-	glfwInit();
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    GLFWwindow* window = glfwCreateWindow(800, 600, "Vulkan window", nullptr, nullptr);
-
-	// counting the number of supported Vulkan extensions
-    uint32_t extensionCount = 0;
-    vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
-    std::cout << extensionCount << " extensions supported\n";
-
-	// check to see if GLM is working
-    glm::mat4 matrix;
-    glm::vec4 vec;
-    auto test = matrix * vec;
-
-	// wait
-    while(!glfwWindowShouldClose(window)){
-		glfwPollEvents();
-	}
-
-	// quit
-    glfwDestroyWindow(window);
-    glfwTerminate();
-
-    return 0;
+    app vkApp;
+    try{vkApp.run();}catch(const std::exception& e){
+        std::cerr << e.what() << std::endl;
+        return EXIT_FAILURE;
+    }
+    return EXIT_SUCCESS;
 }
