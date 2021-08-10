@@ -127,13 +127,13 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
         func(instance, debugMessenger, pAllocator);
 }
 
+void app::create_surface() {
+	if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create window surface!");
+}
 
-struct QueueFamilyIndices {
-    std::optional<uint32_t> graphics_family;
-	bool found(){ return graphics_family.has_value(); }
-};
 
-QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) {
+QueueFamilyIndices app::findQueueFamilies(VkPhysicalDevice device) {
     QueueFamilyIndices indices;
 
     // Assign index to queue families that could be found
@@ -146,6 +146,10 @@ QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) {
 	for (const auto& queueFamily : queueFamilies) {
 	    if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
 	        indices.graphics_family = i;
+        VkBool32 presentSupport = false;
+        vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+		if (presentSupport)
+			indices.present_family = i;
 		if (indices.found()) break;
 	    i++;
 	}
@@ -156,7 +160,7 @@ QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) {
 // this can also be useful for confirming a device is capable of what you want from it,
 // interesting idea of using a scoring methodology to choose from multiple devices here:
 //   https://vulkan-tutorial.com/Drawing_a_triangle/Setup/Physical_devices_and_queue_families#page_Base-device-suitability-checks
-bool is_device_suitable(VkPhysicalDevice device) {
+bool app::is_device_suitable(VkPhysicalDevice device) {
 	// https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VkPhysicalDeviceProperties.html
 	VkPhysicalDeviceProperties deviceProperties;
 	vkGetPhysicalDeviceProperties(device, &deviceProperties);
@@ -190,20 +194,28 @@ void app::pick_physical_device() {
 void app::create_logical_device() {
 	QueueFamilyIndices indices = findQueueFamilies(physical_device);
 
-	VkDeviceQueueCreateInfo queueCreateInfo{};
-	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
-	queueCreateInfo.queueFamilyIndex = indices.graphics_family.value();
-	queueCreateInfo.queueCount = 1;
+	// this thing using <set> is how it's being handled in vulkan-tutorial, but I think this is
+	//   just really superfluous for what is *at most* two ints? will return to this later
+	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+	std::set<uint32_t> uniqueQueueFamilies = {indices.graphics_family.value(), indices.present_family.value()};
 
 	float queuePriority = 1.0f;
-	queueCreateInfo.pQueuePriorities = &queuePriority;
+	for (uint32_t queueFamily : uniqueQueueFamilies) {
+		VkDeviceQueueCreateInfo queueCreateInfo{};
+		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		queueCreateInfo.queueFamilyIndex = queueFamily;
+		queueCreateInfo.queueCount = 1;
+		queueCreateInfo.pQueuePriorities = &queuePriority;
+		queueCreateInfos.push_back(queueCreateInfo);
+	}
 
 	VkPhysicalDeviceFeatures deviceFeatures{};	// currently empty
 	VkDeviceCreateInfo createInfo{};
 	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-	createInfo.pQueueCreateInfos = &queueCreateInfo;
-	createInfo.queueCreateInfoCount = 1;
+	createInfo.pQueueCreateInfos = queueCreateInfos.data();
+	createInfo.queueCreateInfoCount = static_cast<uint32_t>(queueCreateInfos.size());
 	createInfo.pEnabledFeatures = &deviceFeatures;
+ 	createInfo.enabledExtensionCount = 0;
 	createInfo.pNext = nullptr;
 
 	if (enableValidationLayers) {
@@ -215,7 +227,9 @@ void app::create_logical_device() {
 	if (vkCreateDevice(physical_device, &createInfo, nullptr, &device) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create logical device!");
 
+	// creating the queue objects
 	vkGetDeviceQueue(device, indices.graphics_family.value(), 0, &graphics_queue);
+	vkGetDeviceQueue(device, indices.present_family.value(), 0, &present_queue);
 }
 
 // main loop for runtime operations (input, etc)
@@ -227,16 +241,13 @@ void app::main_loop() {
 
 // called on program shutdown
 void app::cleanup() {
-	// destroy the logical device associated with the GPU
-	vkDestroyDevice(device, nullptr);
-
 	if( enableValidationLayers ) // delete debug callback
 		DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
 
-	// destroy the created instance
-	vkDestroyInstance(instance, nullptr);
+	vkDestroyDevice(device, nullptr); // destroy the logical device associated with the GPU
+	vkDestroySurfaceKHR(instance, surface, nullptr); // destroy the window surface
+	vkDestroyInstance(instance, nullptr); // destroy the created instance
 
-	// close the window and end the program
-	glfwDestroyWindow(window);
+	glfwDestroyWindow(window); // close the window and end the program
 	glfwTerminate();
 }
