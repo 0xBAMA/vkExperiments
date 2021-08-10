@@ -152,8 +152,8 @@ QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device) {
     return indices;
 }
 
-// if you have multiple devices, you might want to check for some hardware capabilities
-// this can also be useful for confirming a device is capable of what you want from it
+// if you have multiple devices, you might want to check for some hardware capabilities -
+// this can also be useful for confirming a device is capable of what you want from it,
 // interesting idea of using a scoring methodology to choose from multiple devices here:
 //   https://vulkan-tutorial.com/Drawing_a_triangle/Setup/Physical_devices_and_queue_families#page_Base-device-suitability-checks
 bool is_device_suitable(VkPhysicalDevice device) {
@@ -180,15 +180,42 @@ void app::pick_physical_device() {
 	vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 	for (const auto& device : devices)
 	    if (is_device_suitable(device)) {
-	        physicalDevice = device;
+	        physical_device = device;
 	        break;
 	    }
 
-	if (physicalDevice == VK_NULL_HANDLE) throw std::runtime_error("failed to find a suitable GPU!");
+	if (physical_device == VK_NULL_HANDLE) throw std::runtime_error("Failed to find a suitable GPU!");
 }
 
 void app::create_logical_device() {
+	QueueFamilyIndices indices = findQueueFamilies(physical_device);
 
+	VkDeviceQueueCreateInfo queueCreateInfo{};
+	queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+	queueCreateInfo.queueFamilyIndex = indices.graphics_family.value();
+	queueCreateInfo.queueCount = 1;
+
+	float queuePriority = 1.0f;
+	queueCreateInfo.pQueuePriorities = &queuePriority;
+
+	VkPhysicalDeviceFeatures deviceFeatures{};	// currently empty
+	VkDeviceCreateInfo createInfo{};
+	createInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+	createInfo.pQueueCreateInfos = &queueCreateInfo;
+	createInfo.queueCreateInfoCount = 1;
+	createInfo.pEnabledFeatures = &deviceFeatures;
+	createInfo.pNext = nullptr;
+
+	if (enableValidationLayers) {
+		createInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+		createInfo.ppEnabledLayerNames = validationLayers.data();
+	}else
+		createInfo.enabledLayerCount = 0;
+
+	if (vkCreateDevice(physical_device, &createInfo, nullptr, &device) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create logical device!");
+
+	vkGetDeviceQueue(device, indices.graphics_family.value(), 0, &graphics_queue);
 }
 
 // main loop for runtime operations (input, etc)
@@ -200,6 +227,9 @@ void app::main_loop() {
 
 // called on program shutdown
 void app::cleanup() {
+	// destroy the logical device associated with the GPU
+	vkDestroyDevice(device, nullptr);
+
 	if( enableValidationLayers ) // delete debug callback
 		DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
 

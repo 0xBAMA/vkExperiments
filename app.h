@@ -26,6 +26,15 @@ const std::vector<const char*> validationLayers = {"VK_LAYER_KHRONOS_validation"
 constexpr bool enableValidationLayers = false;
 #endif
 
+static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
+	VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+	VkDebugUtilsMessageTypeFlagsEXT messageType,
+	const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+	void* pUserData) { // just defined here because the prototype is almost as long as the function
+	if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) // Message is important enough to show
+		cerr << "validation layer: " << pCallbackData->pMessage << endl;
+	return VK_FALSE;
+}
 
 class app {
 public:
@@ -51,26 +60,26 @@ private:
 		create_logical_device();
 	}
 
-// init helper functions
+//  ╦ ╦┌─┐┬  ┌─┐┌─┐┬─┐  ╔═╗┬ ┬┌┐┌┌─┐┌┬┐┬┌─┐┌┐┌┌─┐
+//  ╠═╣├┤ │  ├─┘├┤ ├┬┘  ╠╣ │ │││││   │ ││ ││││└─┐
+//  ╩ ╩└─┘┴─┘┴  └─┘┴└─  ╚  └─┘┘└┘└─┘ ┴ ┴└─┘┘└┘└─┘
 	// creates a Vulkan instance
 	void create_instance();
+
 	// vulkan driver capabilities
 	void list_extensions();
+
 	// debug callback
 	VkDebugUtilsMessengerEXT debugMessenger;
 	void init_debug_callback();
-	static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-	    VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-	    VkDebugUtilsMessageTypeFlagsEXT messageType,
-	    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-	    void* pUserData) { // just defined here because the prototype is almost as long as the function
-		if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) // Message is important enough to show
-			cerr << "validation layer: " << pCallbackData->pMessage << endl;
-	    return VK_FALSE;
-	}
+
 	// physical device selection
-	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+	VkPhysicalDevice physical_device = VK_NULL_HANDLE;
 	void pick_physical_device();
+
+	// logical device
+	VkDevice device;
+	VkQueue graphics_queue;
 	void create_logical_device();
 
 	// contains program main loop behavior
