@@ -5,6 +5,8 @@ void app::init_window() {
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	glfwWindowHint(GLFW_RESIZABLE,  GLFW_FALSE);
 	window = glfwCreateWindow(width, height, "Vulkan", nullptr, nullptr);
+
+	glfwSetKeyCallback(window, key_callback); // set up keyboard input callback function
 }
 
 bool checkValidationLayerSupport() {
@@ -173,8 +175,16 @@ bool app::is_device_suitable(VkPhysicalDevice device) {
 
 	// for now, we are just making sure that we have at least one graphics queue
 	QueueFamilyIndices indices = findQueueFamilies(device);
-	return indices.found();
+
+	bool extensionsSupported = checkDeviceExtensionSupport(device);
+
+	return indices.found() && extensionsSupported;
 }
+
+bool app::checkDeviceExtensionSupport(VkPhysicalDevice device) {
+    return true;
+}
+
 
 void app::pick_physical_device() {
 	uint32_t deviceCount = 0;
@@ -232,11 +242,21 @@ void app::create_logical_device() {
 	vkGetDeviceQueue(device, indices.present_family.value(), 0, &present_queue);
 }
 
+void app::create_swapchain() {
+
+}
+
 // main loop for runtime operations (input, etc)
 void app::main_loop() {
-	while( !glfwWindowShouldClose( window ) ){
-		glfwPollEvents();
+	while( !glfwWindowShouldClose( window ) ) {
+		glfwPollEvents(); // handle all the events off the queue
 	}
+}
+
+// called with the information on key events
+void app::key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
+        glfwSetWindowShouldClose(window, 1); // hit escape to close the app
 }
 
 // called on program shutdown

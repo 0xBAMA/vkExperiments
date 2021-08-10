@@ -15,7 +15,7 @@ using std::endl, std::cout, std::cin, std::cerr;
 // these will be done away with eventually, I want to reimplement the parts that use these headers
 #include <optional> // for the vulkan-tutorial style handling of the QueueFamilyIndices
 #include <set> // also used for the QueueFamilyIndices stuff
-// this will probably meet the same fate, static arrays will be suitable instead
+// this will probably meet the same fate, static arrays are going to be able to do everything I need
 #include <vector>
 
 constexpr uint32_t width = 800;
@@ -24,16 +24,19 @@ constexpr uint32_t height = 600;
 #define DEBUG
 #ifdef DEBUG
 constexpr bool enableValidationLayers = true;
-const std::vector<const char*> validationLayers = {"VK_LAYER_KHRONOS_validation"};
 #else
 constexpr bool enableValidationLayers = false;
 #endif
 
-static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
-	VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-	VkDebugUtilsMessageTypeFlagsEXT messageType,
-	const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-	void* pUserData) { // just defined here because the prototype is almost as long as the function
+const std::vector<const char*> validationLayers = {
+	"VK_LAYER_KHRONOS_validation"
+};
+
+const std::vector<const char*> deviceExtensions = {
+    VK_KHR_SWAPCHAIN_EXTENSION_NAME
+};
+
+static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,	void* pUserData) {
 	if (messageSeverity >= VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) // Message is important enough to show
 		cerr << "validation layer: " << pCallbackData->pMessage << endl;
 	return VK_FALSE;
@@ -69,6 +72,7 @@ private:
 		create_surface();
 		pick_physical_device();
 		create_logical_device();
+		create_swapchain();
 	}
 
 //  ╦ ╦┌─┐┬  ┌─┐┌─┐┬─┐  ╔═╗┬ ┬┌┐┌┌─┐┌┬┐┬┌─┐┌┐┌┌─┐
@@ -100,8 +104,15 @@ private:
 	bool is_device_suitable(VkPhysicalDevice device);
 	void create_logical_device();
 
+	// swapchain
+	void create_swapchain();
+	bool checkDeviceExtensionSupport(VkPhysicalDevice device);
+
 	// contains program main loop behavior
     void main_loop();
+
+	// just handling escape event to close the window more easily right now
+	static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 
 	// destroying vk objects and shutting down glfw
     void cleanup();
