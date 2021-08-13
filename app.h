@@ -8,6 +8,7 @@
 
 #include <iostream>
 using std::endl, std::cout, std::cin, std::cerr;
+#include <fstream>
 #include <stdexcept>
 #include <cstdlib>
 #include <cstring>
@@ -132,6 +133,7 @@ private:
 
 	// graphics pipeline
 	void create_graphics_pipeline();
+	VkShaderModule createShaderModule(const std::vector<char>& code);
 
 	// contains program main loop behavior
 	void main_loop();
