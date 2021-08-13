@@ -571,6 +571,45 @@ void app::create_graphics_pipeline() {
 }
 
 
+void app::create_render_pass() {
+	VkAttachmentDescription colorAttachment{};
+	colorAttachment.format = swapchainImageFormat;
+	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
+
+	// what to do with the data in the attachment before and after rendering
+	colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; // clear values to constant at start
+	colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE; // rendered contents can be read from memory later
+
+	// same logic, but for the stencil application - disabled
+	colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+	colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
+	// defines the pixel formats for the images - more detail in texture chapter
+	colorAttachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED; // layout before pass begins - doesn't matter, as it is cleared anyways
+	colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR; // layout after pass ends - ready for swapchain presentation
+
+	VkAttachmentReference colorAttachmentRef{};
+	colorAttachmentRef.attachment = 0; // this index is referenced directly with the layout(location = 0) out vec4 color in the shader
+	colorAttachmentRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL; // layout of color attachment
+
+	VkSubpassDescription subpass{};
+	subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+	subpass.colorAttachmentCount = 1;
+	subpass.pColorAttachments = &colorAttachmentRef;
+
+	// attach these together and create
+	VkRenderPassCreateInfo renderPassInfo{};
+	renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+	renderPassInfo.attachmentCount = 1;
+	renderPassInfo.pAttachments = &colorAttachment;
+	renderPassInfo.subpassCount = 1;
+	renderPassInfo.pSubpasses = &subpass;
+
+	if (vkCreateRenderPass(device, &renderPassInfo, nullptr, &renderPass) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create render pass!");
+}
+
+
 // main loop for runtime operations (input, etc)
 void app::main_loop() {
 	while( !glfwWindowShouldClose( window ) ) {
@@ -587,6 +626,7 @@ void app::key_callback(GLFWwindow* window, int key, int scancode, int action, in
 void app::cleanup() {
 	// This function is called on program shutdown to deallocate all GLFW+Vulkan resources
 	vkDestroyPipelineLayout(device, pipelineLayout, nullptr); // delete the pipeline layout
+	vkDestroyRenderPass(device, renderPass, nullptr);  // delete the render pass object
 
 	for (auto imageView : swapchainImageViews)
 		vkDestroyImageView(device, imageView, nullptr); // delete each of the swapchain image views
