@@ -473,7 +473,99 @@ void app::create_graphics_pipeline() {
 
 	VkPipelineShaderStageCreateInfo shaderStages[] = {vertShaderStageInfo, fragShaderStageInfo};
 
+	// specifying the vertex input (currently hardcoded in the shader)
+	VkPipelineVertexInputStateCreateInfo vertexInputInfo{};
+	vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+	// two sets of pointers to array-of-structures to describe user specified vertex data
+	vertexInputInfo.vertexBindingDescriptionCount = 0;
+	vertexInputInfo.pVertexBindingDescriptions = nullptr;
+	vertexInputInfo.vertexAttributeDescriptionCount = 0;
+	vertexInputInfo.pVertexAttributeDescriptions = nullptr;
 
+	// specifies the manner in which the vertex data is used when assembling each primitive
+	VkPipelineInputAssemblyStateCreateInfo inputAssembly{};
+	inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+	inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+	inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+	// region of the viewport which will be rendered to - this is typically (0,0) to (width,height)
+	VkViewport viewport{};
+	viewport.x = 0.0f;	viewport.width  = (float) swapchainExtent.width;
+	viewport.y = 0.0f;	viewport.height = (float) swapchainExtent.height;
+	viewport.minDepth = 0.0f;
+	viewport.maxDepth = 1.0f;
+
+	// scissor is maybe kind of like a stencil buffer? for only presenting part of framebuffer
+	VkRect2D scissor{};
+	scissor.offset = {0, 0};
+	scissor.extent = swapchainExtent;
+
+	// from these two, construct the viewport state
+	VkPipelineViewportStateCreateInfo viewportState{};
+	viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+	viewportState.viewportCount = 1;
+	viewportState.pViewports = &viewport;
+	viewportState.scissorCount = 1;
+	viewportState.pScissors = &scissor;
+
+	// rasterizer setup
+	VkPipelineRasterizationStateCreateInfo rasterizer{};
+	rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+	rasterizer.depthClampEnable = VK_FALSE; // clamps depth to [0,1], used for e.g. shadow maps
+	rasterizer.rasterizerDiscardEnable = VK_FALSE; // if true, geometry never passes through rasterizer
+	rasterizer.polygonMode = VK_POLYGON_MODE_FILL; // filled, edge lines, points at vertices, etc
+	rasterizer.lineWidth = 1.0f; // width of lines drawn by the API - must use wideLines GPU feature for >1.0
+	rasterizer.cullMode = VK_CULL_MODE_BACK_BIT; // culling mode: discard front/back/both/neither
+	rasterizer.frontFace = VK_FRONT_FACE_CLOCKWISE; // how to determine front/back (winding order)
+	rasterizer.depthBiasEnable = VK_FALSE; // sometimes used for shadow mapping, constant offset to depth value
+	rasterizer.depthBiasConstantFactor = 0.0f;
+	rasterizer.depthBiasClamp = 0.0f;
+	rasterizer.depthBiasSlopeFactor = 0.0f;
+
+	// will be revisited in the multisampling chapter, currently disabled
+	VkPipelineMultisampleStateCreateInfo multisampling{};
+	multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+	multisampling.sampleShadingEnable = VK_FALSE;
+	multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
+	multisampling.minSampleShading = 1.0f;
+	multisampling.pSampleMask = nullptr;
+	multisampling.alphaToCoverageEnable = VK_FALSE;
+	multisampling.alphaToOneEnable = VK_FALSE;
+
+	// color blending - basic alpha blending
+	VkPipelineColorBlendAttachmentState colorBlendAttachment{};
+	colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+	colorBlendAttachment.blendEnable = VK_TRUE;
+	colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+	colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+	colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+	colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+	colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+	colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+
+	// more global settings re:blending
+	VkPipelineColorBlendStateCreateInfo colorBlending{};
+	colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+	colorBlending.logicOpEnable = VK_FALSE; // apply bitwise ops to combine
+	colorBlending.logicOp = VK_LOGIC_OP_COPY;
+	colorBlending.attachmentCount = 1;
+	colorBlending.pAttachments = &colorBlendAttachment;
+	colorBlending.blendConstants[0] = 0.0f;
+	colorBlending.blendConstants[1] = 0.0f;
+	colorBlending.blendConstants[2] = 0.0f;
+	colorBlending.blendConstants[3] = 0.0f;
+
+	VkPipelineLayoutCreateInfo pipelineLayoutInfo{};
+	pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+	pipelineLayoutInfo.setLayoutCount = 0; // Optional
+	pipelineLayoutInfo.pSetLayouts = nullptr; // Optional
+	pipelineLayoutInfo.pushConstantRangeCount = 0; // Optional
+	pipelineLayoutInfo.pPushConstantRanges = nullptr; // Optional
+
+	if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
+	    throw std::runtime_error("Failed to create pipeline layout!");
+
+	// destroy shader modules after pipeline creation is done
 	vkDestroyShaderModule(device, fragShaderModule, nullptr);
 	vkDestroyShaderModule(device, vertShaderModule, nullptr);
 }
@@ -492,8 +584,10 @@ void app::key_callback(GLFWwindow* window, int key, int scancode, int action, in
 		glfwSetWindowShouldClose(window, 1); // hit escape to close the app
 }
 
-// called on program shutdown to deallocate all GLFW+Vulkan resources
 void app::cleanup() {
+	// This function is called on program shutdown to deallocate all GLFW+Vulkan resources
+	vkDestroyPipelineLayout(device, pipelineLayout, nullptr); // delete the pipeline layout
+
 	for (auto imageView : swapchainImageViews)
 		vkDestroyImageView(device, imageView, nullptr); // delete each of the swapchain image views
 	vkDestroySwapchainKHR(device, swapchain, nullptr); // delete the current swapchain

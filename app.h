@@ -83,6 +83,7 @@ private:
 		create_logical_device();
 		create_swapchain();
 		create_image_views();
+		// create_render_pass();
 		create_graphics_pipeline();
 	}
 
@@ -132,6 +133,7 @@ private:
 	void create_image_views();
 
 	// graphics pipeline
+	VkPipelineLayout pipelineLayout;
 	void create_graphics_pipeline();
 	VkShaderModule createShaderModule(const std::vector<char>& code);
 
