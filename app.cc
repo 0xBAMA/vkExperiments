@@ -565,6 +565,31 @@ void app::create_graphics_pipeline() {
 	if (vkCreatePipelineLayout(device, &pipelineLayoutInfo, nullptr, &pipelineLayout) != VK_SUCCESS)
 	    throw std::runtime_error("Failed to create pipeline layout!");
 
+	VkGraphicsPipelineCreateInfo pipelineInfo{};
+	pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+	pipelineInfo.stageCount = 2; // vertex and fragment shaders
+	pipelineInfo.pStages = shaderStages;
+
+	pipelineInfo.pVertexInputState = &vertexInputInfo;
+	pipelineInfo.pInputAssemblyState = &inputAssembly;
+	pipelineInfo.pViewportState = &viewportState;
+	pipelineInfo.pRasterizationState = &rasterizer;
+	pipelineInfo.pMultisampleState = &multisampling;
+	pipelineInfo.pDepthStencilState = nullptr; // Optional
+	pipelineInfo.pColorBlendState = &colorBlending;
+	pipelineInfo.pDynamicState = nullptr; // can be used to vary linewidth or viewport size at runtime
+
+	pipelineInfo.layout = pipelineLayout;
+	pipelineInfo.renderPass = renderPass;
+	pipelineInfo.subpass = 0;
+
+	// this can use a base pipeline to create the current one, if many properties are in common
+	pipelineInfo.basePipelineHandle = VK_NULL_HANDLE; // Optional
+	pipelineInfo.basePipelineIndex = -1; // Optional
+
+	if (vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &graphicsPipeline) != VK_SUCCESS)
+		throw std::runtime_error("Failed to create graphics pipeline!");
+
 	// destroy shader modules after pipeline creation is done
 	vkDestroyShaderModule(device, fragShaderModule, nullptr);
 	vkDestroyShaderModule(device, vertShaderModule, nullptr);
@@ -625,6 +650,7 @@ void app::key_callback(GLFWwindow* window, int key, int scancode, int action, in
 
 void app::cleanup() {
 	// This function is called on program shutdown to deallocate all GLFW+Vulkan resources
+	vkDestroyPipeline(device, graphicsPipeline, nullptr); // delete the pipeline object
 	vkDestroyPipelineLayout(device, pipelineLayout, nullptr); // delete the pipeline layout
 	vkDestroyRenderPass(device, renderPass, nullptr);  // delete the render pass object
 

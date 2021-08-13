@@ -134,6 +134,7 @@ private:
 
 	// graphics pipeline
 	VkPipelineLayout pipelineLayout;
+	VkPipeline graphicsPipeline;
 	void create_graphics_pipeline();
 	VkShaderModule createShaderModule(const std::vector<char>& code);
 
