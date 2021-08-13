@@ -82,6 +82,7 @@ private:
 		create_logical_device();
 		create_swapchain();
 		create_image_views();
+		create_graphics_pipeline();
 	}
 
 //  ╦ ╦┌─┐┬  ┌─┐┌─┐┬─┐  ╔═╗┬ ┬┌┐┌┌─┐┌┬┐┬┌─┐┌┐┌┌─┐
@@ -128,6 +129,9 @@ private:
 	VkFormat swapchainImageFormat;
 	VkExtent2D swapchainExtent;
 	void create_image_views();
+
+	// graphics pipeline
+	void create_graphics_pipeline();
 
 	// contains program main loop behavior
 	void main_loop();

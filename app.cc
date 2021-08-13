@@ -417,6 +417,11 @@ void app::create_image_views() {
 	}
 }
 
+void app::create_graphics_pipeline() {
+
+}
+
+
 // main loop for runtime operations (input, etc)
 void app::main_loop() {
 	while( !glfwWindowShouldClose( window ) ) {
@@ -430,7 +435,7 @@ void app::key_callback(GLFWwindow* window, int key, int scancode, int action, in
 		glfwSetWindowShouldClose(window, 1); // hit escape to close the app
 }
 
-// called on program shutdown
+// called on program shutdown to deallocate all GLFW+Vulkan resources
 void app::cleanup() {
 	for (auto imageView : swapchainImageViews)
 		vkDestroyImageView(device, imageView, nullptr); // delete each of the swapchain image views
