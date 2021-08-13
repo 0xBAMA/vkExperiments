@@ -383,6 +383,38 @@ void app::create_swapchain() {
 	vkGetSwapchainImagesKHR(device, swapchain, &imageCount, nullptr);
 	swapchainImages.resize(imageCount);
 	vkGetSwapchainImagesKHR(device, swapchain, &imageCount, swapchainImages.data());
+
+	swapchainImageFormat = surfaceFormat.format;
+	swapchainExtent = extent;
+}
+
+void app::create_image_views() {
+	swapchainImageViews.resize(swapchainImages.size());
+	for (size_t i = 0; i < swapchainImages.size(); i++) {
+		VkImageViewCreateInfo createInfo{};
+		createInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+		createInfo.pNext = nullptr;
+		createInfo.image = swapchainImages[i];
+		createInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+		createInfo.format = swapchainImageFormat;
+
+		// remapping the color channels if desired e.g. monochrome or constant value for a given channel
+		createInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+		createInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+		createInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+		createInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+
+		// describing image purpose - here, just a color target with no mip levels and a single layer
+		createInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+		createInfo.subresourceRange.baseMipLevel = 0;
+		createInfo.subresourceRange.levelCount = 1;
+		createInfo.subresourceRange.baseArrayLayer = 0;
+		createInfo.subresourceRange.layerCount = 1;
+
+		// create the image views
+		if (vkCreateImageView(device, &createInfo, nullptr, &swapchainImageViews[i]) != VK_SUCCESS)
+		    throw std::runtime_error("failed to create image views!");
+	}
 }
 
 // main loop for runtime operations (input, etc)
@@ -400,6 +432,8 @@ void app::key_callback(GLFWwindow* window, int key, int scancode, int action, in
 
 // called on program shutdown
 void app::cleanup() {
+	for (auto imageView : swapchainImageViews)
+		vkDestroyImageView(device, imageView, nullptr); // delete each of the swapchain image views
 	vkDestroySwapchainKHR(device, swapchain, nullptr); // delete the current swapchain
 
 	if( enableValidationLayers ) // delete debug callback

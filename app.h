@@ -81,6 +81,7 @@ private:
 		pick_physical_device();
 		create_logical_device();
 		create_swapchain();
+		create_image_views();
 	}
 
 //  ╦ ╦┌─┐┬  ┌─┐┌─┐┬─┐  ╔═╗┬ ┬┌┐┌┌─┐┌┬┐┬┌─┐┌┐┌┌─┐
@@ -121,6 +122,12 @@ private:
 	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
 	VkExtent2D chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities);
 	bool checkDeviceExtensionSupport(VkPhysicalDevice device);
+
+	// image views
+	std::vector<VkImageView> swapchainImageViews;
+	VkFormat swapchainImageFormat;
+	VkExtent2D swapchainExtent;
+	void create_image_views();
 
 	// contains program main loop behavior
 	void main_loop();
