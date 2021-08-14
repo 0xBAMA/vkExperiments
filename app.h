@@ -38,7 +38,7 @@ const std::vector<const char*> validationLayers = {
 };
 
 const std::vector<const char*> deviceExtensions = {
-  VK_KHR_SWAPCHAIN_EXTENSION_NAME
+	VK_KHR_SWAPCHAIN_EXTENSION_NAME
 };
 
 static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,	void* pUserData) {
@@ -49,9 +49,9 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(VkDebugUtilsMessageSeverityF
 
 // used to determine a suitable devices in the system (at least a graphics+present queue)
 struct QueueFamilyIndices {
-	std::optional<uint32_t> graphics_family;
-  std::optional<uint32_t> present_family;
-	bool found(){ return graphics_family.has_value() && present_family.has_value(); }
+	std::optional<uint32_t> graphicsFamily;
+	std::optional<uint32_t> presentFamily;
+	bool found(){ return graphicsFamily.has_value() && presentFamily.has_value(); }
 };
 
 // simplifies the passing of swapchain details
@@ -64,73 +64,68 @@ struct SwapchainSupportDetails {
 class app {
 public:
   	void run() { // high level program structure
-		init_glfw();
-		init_Vulkan();
-		main_loop();
+		initGLFW();
+		initVulkan();
+		mainLoop();
 		cleanup();
 	}
 private:
 	// setting up a window to display + input callbacks
 	GLFWwindow* window;
-	void init_glfw();
+	void initGLFW();
 
 	// setting up the graphics API
 	VkInstance instance;
-	void init_Vulkan() {
+	void initVulkan() {
 		// startup sequence
-		create_instance();
-		init_debug_callback();
-		create_surface();
-		pick_physical_device();
-		create_logical_device();
-		create_swapchain();
-		create_image_views();
-		create_render_pass();
-		create_graphics_pipeline();
-		create_framebuffers();
-		create_command_pool();
-		create_command_buffers();
-		create_sync_objects();
+		createInstance();
+		initDebugCallback();
+		createSurface();
+		pickPhysicalDevice();
+		createLogicalDevice();
+		createSwapchain();
+		createImageViews();
+		createRenderPass();
+		createGraphicsPipeline();
+		createFramebuffers();
+		createCommandPool();
+		createCommandBuffers();
+		createSyncObjects();
 	}
-
-	// resize utilities
-	bool framebufferResized = false;
-	void cleanupSwapchain();
-	void recreateSwapchain();
 
 //  ╦ ╦┌─┐┬  ┌─┐┌─┐┬─┐  ╔═╗┬ ┬┌┐┌┌─┐┌┬┐┬┌─┐┌┐┌┌─┐
 //  ╠═╣├┤ │  ├─┘├┤ ├┬┘  ╠╣ │ │││││   │ ││ ││││└─┐
 //  ╩ ╩└─┘┴─┘┴  └─┘┴└─  ╚  └─┘┘└┘└─┘ ┴ ┴└─┘┘└┘└─┘
 	// creates a Vulkan instance
-	void create_instance();
+	void createInstance();
 
 	// vulkan driver capabilities - checks instance extensions
-	void list_extensions();
+	void listExtensions();
 
 	// debug callback
 	VkDebugUtilsMessengerEXT debugMessenger;
-	void init_debug_callback();
+	void initDebugCallback();
 
 	// window surface, used to present results
 	VkSurfaceKHR surface;
-	void create_surface();
+	void createSurface();
 
 	// physical device selection
-	VkPhysicalDevice physical_device = VK_NULL_HANDLE;
-	void pick_physical_device();
+	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+	void pickPhysicalDevice();
 
 	// logical device
 	VkDevice device;
-	VkQueue graphics_queue;
-	VkQueue present_queue;
+	VkQueue graphicsQueue;
+	VkQueue presentQueue;
 	QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device);
-	bool is_device_suitable(VkPhysicalDevice device);
-	void create_logical_device();
+	bool isDeviceSuitable(VkPhysicalDevice device);
+	void createLogicalDevice();
 
 	// swapchain
 	std::vector<VkImage> swapchainImages;
 	VkSwapchainKHR swapchain;
-	void create_swapchain();
+	void createSwapchain();
 	SwapchainSupportDetails querySwapchainSupport(VkPhysicalDevice device);
 	VkSurfaceFormatKHR chooseSwapSurfaceFormat(const std::vector<VkSurfaceFormatKHR>& availableFormats);
 	VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes);
@@ -141,44 +136,49 @@ private:
 	std::vector<VkImageView> swapchainImageViews;
 	VkFormat swapchainImageFormat;
 	VkExtent2D swapchainExtent;
-	void create_image_views();
+	void createImageViews();
 
 	// graphics pipeline
 	VkPipelineLayout pipelineLayout;
 	VkPipeline graphicsPipeline;
-	void create_graphics_pipeline();
+	void createGraphicsPipeline();
 	VkShaderModule createShaderModule(const std::vector<char>& code);
 
 	// render pass
 	VkRenderPass renderPass;
-	void create_render_pass();
+	void createRenderPass();
 
 	// framebuffers
 	std::vector<VkFramebuffer> swapchainFramebuffers;
-	void create_framebuffers();
+	void createFramebuffers();
 
 	// command pool/buffers
 	std::vector<VkCommandBuffer> commandBuffers;
 	VkCommandPool commandPool;
-	void create_command_pool(); // pool manages the memory that is used by buffers
-	void create_command_buffers(); // allocated out of the pool
+	void createCommandPool(); // pool manages the memory that is used by buffers
+	void createCommandBuffers(); // allocated out of the pool
 
 	// synchronization objects
 	std::vector<VkSemaphore> imageAvailableSemaphores;
 	std::vector<VkSemaphore> renderFinishedSemaphores;
 	std::vector<VkFence> inFlightFences;
 	std::vector<VkFence> imagesInFlight;
-	void create_sync_objects();
+	void createSyncObjects();
 	size_t currentFrame = 0;
 
 	// contains program main loop behavior
-	void draw_frame();
-	void main_loop();
+	void drawFrame();
+	void mainLoop();
 
 	// just handling escape event to close the window more easily right now
-	static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+	static void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 	static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
 
+	// resize utilities
+	bool framebufferResized = false;
+	void recreateSwapchain();
+
 	// destroying vk objects and shutting down glfw
+	void cleanupSwapchain(); // broken out for swapchain recreation
 	void cleanup();
 };

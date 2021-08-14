@@ -1,6 +1,6 @@
 #include "app.h"
 
-void app::init_glfw() {
+void app::initGLFW() {
 	glfwInit();
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	window = glfwCreateWindow(width, height, "Vulkan", nullptr, nullptr);
@@ -8,7 +8,7 @@ void app::init_glfw() {
 	glfwSetWindowUserPointer(window, this); // pointer to app, for resize callback
 	glfwSetFramebufferSizeCallback(window, framebufferResizeCallback); // called on window resize
 
-	glfwSetKeyCallback(window, key_callback); // keyboard input callback function
+	glfwSetKeyCallback(window, keyCallback); // keyboard input callback function
 }
 
 bool checkValidationLayerSupport() {
@@ -39,7 +39,7 @@ std::vector<const char*> getRequiredExtensions() {
   return extensions;
 }
 
-void app::create_instance() {
+void app::createInstance() {
 	// enable the validation layers if desired
 	if (enableValidationLayers && !checkValidationLayerSupport())
 		throw std::runtime_error("Validation layers are requested but not available!");
@@ -86,13 +86,13 @@ void app::create_instance() {
 		throw std::runtime_error("Vulkan instance creation failed!");
 }
 
-void app::list_extensions() {
+void app::listExtensions() {
 	if(!enableValidationLayers) return;
-	uint32_t extension_count = 0;
-	vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, nullptr);
-	std::vector<VkExtensionProperties> extensions(extension_count);
-	vkEnumerateInstanceExtensionProperties(nullptr, &extension_count, extensions.data());
-	cout << "available extensions(" << extension_count << "):\n";
+	uint32_t extensionCount = 0;
+	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, nullptr);
+	std::vector<VkExtensionProperties> extensions(extensionCount);
+	vkEnumerateInstanceExtensionProperties(nullptr, &extensionCount, extensions.data());
+	cout << "available extensions(" << extensionCount << "):\n";
 	for (const auto& extension : extensions) // report
 		cout << '\t' << extension.extensionName << '\n';
 }
@@ -106,7 +106,7 @@ VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMes
     return VK_ERROR_EXTENSION_NOT_PRESENT;
 }
 
-void app::init_debug_callback() {
+void app::initDebugCallback() {
 	if (!enableValidationLayers) return; // use of callback not desired
 
 	VkDebugUtilsMessengerCreateInfoEXT createInfo{};
@@ -127,7 +127,7 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
 		func(instance, debugMessenger, pAllocator);
 }
 
-void app::create_surface() {
+void app::createSurface() {
 	if (glfwCreateWindowSurface(instance, window, nullptr, &surface) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create window surface!");
 }
@@ -145,11 +145,11 @@ QueueFamilyIndices app::findQueueFamilies(VkPhysicalDevice device) {
 	int i = 0; // iterate through queue families and determine if we have at least one graphics queue
 	for (const auto& queueFamily : queueFamilies) {
    	if (queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT)
-      	indices.graphics_family = i;
+      	indices.graphicsFamily = i;
     	VkBool32 presentSupport = false;
     	vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
 		if (presentSupport)
-			indices.present_family = i;
+			indices.presentFamily = i;
 		if (indices.found()) break;
     	i++;
 	}
@@ -160,7 +160,7 @@ QueueFamilyIndices app::findQueueFamilies(VkPhysicalDevice device) {
 // this can also be useful for confirming a device is capable of what you want from it,
 // interesting idea of using a scoring methodology to choose from multiple devices here:
 //   https://vulkan-tutorial.com/Drawing_a_triangle/Setup/Physical_devices_and_queue_families#page_Base-device-suitability-checks
-bool app::is_device_suitable(VkPhysicalDevice device) {
+bool app::isDeviceSuitable(VkPhysicalDevice device) {
 	// https://www.khronos.org/registry/vulkan/specs/1.2-extensions/man/html/VkPhysicalDeviceProperties.html
 	VkPhysicalDeviceProperties deviceProperties;
 	vkGetPhysicalDeviceProperties(device, &deviceProperties);
@@ -206,27 +206,27 @@ bool app::checkDeviceExtensionSupport(VkPhysicalDevice device) {
 }
 
 
-void app::pick_physical_device() {
+void app::pickPhysicalDevice() {
 	uint32_t deviceCount = 0;
 	vkEnumeratePhysicalDevices(instance, &deviceCount, nullptr);
 	if (deviceCount == 0) throw std::runtime_error("No GPUs with Vulkan support found!");
 	std::vector<VkPhysicalDevice> devices(deviceCount);
 	vkEnumeratePhysicalDevices(instance, &deviceCount, devices.data());
 	for (const auto& device : devices)
-	if (is_device_suitable(device)) {
-		physical_device = device;
+	if (isDeviceSuitable(device)) {
+		physicalDevice = device;
 		break;
 	}
-	if (physical_device == VK_NULL_HANDLE) throw std::runtime_error("Failed to find a suitable GPU!");
+	if (physicalDevice == VK_NULL_HANDLE) throw std::runtime_error("Failed to find a suitable GPU!");
 }
 
-void app::create_logical_device() {
-	QueueFamilyIndices indices = findQueueFamilies(physical_device);
+void app::createLogicalDevice() {
+	QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
 
 	// this thing using <set> is how it's being handled in vulkan-tutorial, but I think this is
 	//   just really superfluous for what is *at most* two ints? will return to this later
 	std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-	std::set<uint32_t> uniqueQueueFamilies = {indices.graphics_family.value(), indices.present_family.value()};
+	std::set<uint32_t> uniqueQueueFamilies = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 
 	float queuePriority = 1.0f;
 	for (uint32_t queueFamily : uniqueQueueFamilies) {
@@ -256,12 +256,12 @@ void app::create_logical_device() {
 		createInfo.enabledLayerCount = 0;
 	}
 
-	if (vkCreateDevice(physical_device, &createInfo, nullptr, &device) != VK_SUCCESS)
+	if (vkCreateDevice(physicalDevice, &createInfo, nullptr, &device) != VK_SUCCESS)
 		throw std::runtime_error("Failed to create logical device!");
 
 	// creating the queue objects
-	vkGetDeviceQueue(device, indices.graphics_family.value(), 0, &graphics_queue);
-	vkGetDeviceQueue(device, indices.present_family.value(), 0, &present_queue);
+	vkGetDeviceQueue(device, indices.graphicsFamily.value(), 0, &graphicsQueue);
+	vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
 }
 
 SwapchainSupportDetails app::querySwapchainSupport(VkPhysicalDevice device) {
@@ -321,8 +321,8 @@ VkExtent2D app::chooseSwapExtent(const VkSurfaceCapabilitiesKHR& capabilities) {
 	}
 }
 
-void app::create_swapchain() {
-	SwapchainSupportDetails swapchainSupport = querySwapchainSupport(physical_device);
+void app::createSwapchain() {
+	SwapchainSupportDetails swapchainSupport = querySwapchainSupport(physicalDevice);
 
 	VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapchainSupport.formats);
 	VkPresentModeKHR presentMode = chooseSwapPresentMode(swapchainSupport.presentModes);
@@ -348,11 +348,11 @@ void app::create_swapchain() {
 	createInfo.imageArrayLayers = 1; // this would change for e.g. stereoscopic 3d
 	createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-	QueueFamilyIndices indices = findQueueFamilies(physical_device);
-	uint32_t queueFamilyIndices[] = {indices.graphics_family.value(), indices.present_family.value()};
+	QueueFamilyIndices indices = findQueueFamilies(physicalDevice);
+	uint32_t queueFamilyIndices[] = {indices.graphicsFamily.value(), indices.presentFamily.value()};
 
 	// check to see if the queue indices are distinct from one another
-	if (indices.graphics_family != indices.present_family) {
+	if (indices.graphicsFamily != indices.presentFamily) {
 		createInfo.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
 		createInfo.queueFamilyIndexCount = 2;
 		createInfo.pQueueFamilyIndices = queueFamilyIndices;
@@ -391,7 +391,7 @@ void app::create_swapchain() {
 	swapchainExtent = extent;
 }
 
-void app::create_image_views() {
+void app::createImageViews() {
 	swapchainImageViews.resize(swapchainImages.size());
 	for (size_t i = 0; i < swapchainImages.size(); i++) {
 		VkImageViewCreateInfo createInfo{};
@@ -451,7 +451,7 @@ VkShaderModule app::createShaderModule(const std::vector<char>& code) {
 }
 
 
-void app::create_graphics_pipeline() {
+void app::createGraphicsPipeline() {
 	auto vertShaderCode = readFile("shaders/vert.spv");
 	auto fragShaderCode = readFile("shaders/frag.spv");
 	VkShaderModule vertShaderModule = createShaderModule(vertShaderCode);
@@ -598,7 +598,7 @@ void app::create_graphics_pipeline() {
 }
 
 
-void app::create_render_pass() {
+void app::createRenderPass() {
 	VkAttachmentDescription colorAttachment{};
 	colorAttachment.format = swapchainImageFormat;
 	colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -647,7 +647,7 @@ void app::create_render_pass() {
 		throw std::runtime_error("Failed to create render pass!");
 }
 
-void app::create_framebuffers() {
+void app::createFramebuffers() {
 	swapchainFramebuffers.resize(swapchainImageViews.size());
 	for (size_t i = 0; i < swapchainImageViews.size(); i++) {
 		VkImageView attachments[] = {swapchainImageViews[i]};
@@ -664,19 +664,19 @@ void app::create_framebuffers() {
 	}
 }
 
-void app::create_command_pool() {
-	QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physical_device);
+void app::createCommandPool() {
+	QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physicalDevice);
 
 	VkCommandPoolCreateInfo poolInfo{};
 	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
-	poolInfo.queueFamilyIndex = queueFamilyIndices.graphics_family.value();
+	poolInfo.queueFamilyIndex = queueFamilyIndices.graphicsFamily.value();
 	poolInfo.flags = 0; // Optional  - there's a few usage hint flags that can go here
 
 	if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS)
    	throw std::runtime_error("Failed to create command pool!");
 }
 
-void app::create_command_buffers() {
+void app::createCommandBuffers() {
 	commandBuffers.resize(swapchainFramebuffers.size());
 	VkCommandBufferAllocateInfo allocInfo{};
 	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -716,7 +716,7 @@ void app::create_command_buffers() {
 	}
 }
 
-void app::create_sync_objects() {
+void app::createSyncObjects() {
 	imageAvailableSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	renderFinishedSemaphores.resize(MAX_FRAMES_IN_FLIGHT);
 	inFlightFences.resize(MAX_FRAMES_IN_FLIGHT);
@@ -737,16 +737,16 @@ void app::create_sync_objects() {
 }
 
 
-void app::draw_frame() {
+void app::drawFrame() {
 	vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
 	uint32_t imageIndex;
 	VkResult result = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
 
-	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
 		recreateSwapchain();
 		return;
-	} else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+	} else if (result != VK_SUCCESS) {
 		throw std::runtime_error("Failed to acquire swapchain image!");
 	}
 
@@ -771,7 +771,7 @@ void app::draw_frame() {
 	submitInfo.pSignalSemaphores = signalSemaphores;
 
 	vkResetFences(device, 1, &inFlightFences[currentFrame]);
-	if (vkQueueSubmit(graphics_queue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS)
+	if (vkQueueSubmit(graphicsQueue, 1, &submitInfo, inFlightFences[currentFrame]) != VK_SUCCESS)
    	throw std::runtime_error("Failed to submit draw command buffer!");
 
 	VkPresentInfoKHR presentInfo{};
@@ -785,8 +785,8 @@ void app::draw_frame() {
 	presentInfo.pImageIndices = &imageIndex;
 	presentInfo.pResults = nullptr; // Optional - creates array of VkResult values for each swapchain, but we have only one
 
-	result = vkQueuePresentKHR(present_queue, &presentInfo); // submit the draw call to the present queue
-	// vkQueueWaitIdle(present_queue); // wait for work to finish after submitting it - not neccesary with fences in place
+	result = vkQueuePresentKHR(presentQueue, &presentInfo); // submit the draw call to the present queue
+	// vkQueueWaitIdle(presentQueue); // wait for work to finish after submitting it - not neccesary with fences in place
 
 	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized)
 		recreateSwapchain();
@@ -797,16 +797,16 @@ void app::draw_frame() {
 }
 
 // main loop for runtime operations (input, etc)
-void app::main_loop() {
+void app::mainLoop() {
 	while( !glfwWindowShouldClose( window ) ) {
 		glfwPollEvents(); // handle all the events off the queue
-		draw_frame(); // draw a frame to the window
+		drawFrame(); // draw a frame to the window
 	}
 	vkDeviceWaitIdle(device);
 }
 
 // called with the information on key events
-void app::key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+void app::keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, 1); // hit escape to close the app
 }
@@ -830,22 +830,22 @@ void app::cleanupSwapchain() {
 
 void app::recreateSwapchain() {
 	// to handle the special case where the app is minimized
-	int width = 0, height = 0; // not working as intended 
-	glfwGetFramebufferSize(window, &width, &height);
-	while (width == 0 || height == 0) {
-		glfwGetFramebufferSize(window, &width, &height);
-		cout << "I am minimized" << endl;
-		glfwWaitEvents();
-	}
+	// int width = 0, height = 0; // not working as intended
+	// glfwGetFramebufferSize(window, &width, &height);
+	// while (width == 0 || height == 0) {
+	// 	glfwGetFramebufferSize(window, &width, &height);
+	// 	cout << "I am minimized" << endl;
+	// 	glfwWaitEvents();
+	// }
 
 	vkDeviceWaitIdle(device);
 	cleanupSwapchain();
-	create_swapchain();
-	create_image_views();
-	create_render_pass();
-	create_graphics_pipeline();
-	create_framebuffers();
-	create_command_buffers();
+	createSwapchain();
+	createImageViews();
+	createRenderPass();
+	createGraphicsPipeline();
+	createFramebuffers();
+	createCommandBuffers();
 }
 
 void app::cleanup() {
