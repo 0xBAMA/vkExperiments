@@ -93,6 +93,11 @@ private:
 		create_sync_objects();
 	}
 
+	// resize utilities
+	bool framebufferResized = false;
+	void cleanupSwapchain();
+	void recreateSwapchain();
+
 //  ╦ ╦┌─┐┬  ┌─┐┌─┐┬─┐  ╔═╗┬ ┬┌┐┌┌─┐┌┬┐┬┌─┐┌┐┌┌─┐
 //  ╠═╣├┤ │  ├─┘├┤ ├┬┘  ╠╣ │ │││││   │ ││ ││││└─┐
 //  ╩ ╩└─┘┴─┘┴  └─┘┴└─  ╚  └─┘┘└┘└─┘ ┴ ┴└─┘┘└┘└─┘

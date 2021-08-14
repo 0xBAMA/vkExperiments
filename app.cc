@@ -3,11 +3,12 @@
 void app::init_glfw() {
 	glfwInit();
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-	glfwWindowHint(GLFW_RESIZABLE,  GLFW_FALSE);
 	window = glfwCreateWindow(width, height, "Vulkan", nullptr, nullptr);
 
-	glfwSetKeyCallback(window, key_callback); // set up keyboard input callback function
+	glfwSetWindowUserPointer(window, this); // pointer to app, for resize callback
 	glfwSetFramebufferSizeCallback(window, framebufferResizeCallback); // called on window resize
+
+	glfwSetKeyCallback(window, key_callback); // keyboard input callback function
 }
 
 bool checkValidationLayerSupport() {
@@ -733,7 +734,6 @@ void app::create_sync_objects() {
 			vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]) != VK_SUCCESS ||
 			vkCreateFence(device, &fenceInfo, nullptr, &inFlightFences[i]) != VK_SUCCESS)
 				throw std::runtime_error("failed to create synchronization objects for a frame!");
-
 }
 
 
@@ -741,7 +741,14 @@ void app::draw_frame() {
 	vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
 
 	uint32_t imageIndex;
-	vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+	VkResult result = vkAcquireNextImageKHR(device, swapchain, UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &imageIndex);
+
+	if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+		recreateSwapchain();
+		return;
+	} else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+		throw std::runtime_error("Failed to acquire swapchain image!");
+	}
 
 	if (imagesInFlight[imageIndex] != VK_NULL_HANDLE)
 		vkWaitForFences(device, 1, &imagesInFlight[imageIndex], VK_TRUE, UINT64_MAX);
@@ -778,8 +785,13 @@ void app::draw_frame() {
 	presentInfo.pImageIndices = &imageIndex;
 	presentInfo.pResults = nullptr; // Optional - creates array of VkResult values for each swapchain, but we have only one
 
-	vkQueuePresentKHR(present_queue, &presentInfo); // submit the draw call to the present queue
-	// vkQueueWaitIdle(present_queue); // wait for work to finish after submitting it
+	result = vkQueuePresentKHR(present_queue, &presentInfo); // submit the draw call to the present queue
+	// vkQueueWaitIdle(present_queue); // wait for work to finish after submitting it - not neccesary with fences in place
+
+	if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || framebufferResized)
+		recreateSwapchain();
+	else if (result != VK_SUCCESS)
+		throw std::runtime_error("Failed to present swapchain image!");
 
 	currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
@@ -800,29 +812,51 @@ void app::key_callback(GLFWwindow* window, int key, int scancode, int action, in
 }
 
 void app::framebufferResizeCallback(GLFWwindow* window, int width, int height) {
+    auto application = reinterpret_cast<app*>(glfwGetWindowUserPointer(window)); // get pointer to app class
+    application->framebufferResized = true; // let the main loop know that a resize has ocurred
+}
 
+void app::cleanupSwapchain() {
+	for (size_t i = 0; i < swapchainFramebuffers.size(); i++)
+		vkDestroyFramebuffer(device, swapchainFramebuffers[i], nullptr);
+	vkFreeCommandBuffers(device, commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+	vkDestroyPipeline(device, graphicsPipeline, nullptr);
+	vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+	vkDestroyRenderPass(device, renderPass, nullptr);
+	for (auto imageView : swapchainImageViews)
+		vkDestroyImageView(device, imageView, nullptr); // delete each of the swapchain image views
+	vkDestroySwapchainKHR(device, swapchain, nullptr); // delete the current swapchain
+}
+
+void app::recreateSwapchain() {
+	// to handle the special case where the app is minimized
+	int width = 0, height = 0; // not working as intended 
+	glfwGetFramebufferSize(window, &width, &height);
+	while (width == 0 || height == 0) {
+		glfwGetFramebufferSize(window, &width, &height);
+		cout << "I am minimized" << endl;
+		glfwWaitEvents();
+	}
+
+	vkDeviceWaitIdle(device);
+	cleanupSwapchain();
+	create_swapchain();
+	create_image_views();
+	create_render_pass();
+	create_graphics_pipeline();
+	create_framebuffers();
+	create_command_buffers();
 }
 
 void app::cleanup() {
 	// This function is called on program shutdown to deallocate all GLFW+Vulkan resources
+	cleanupSwapchain(); // delete swapchain objects
 	for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) { // delete all sync objects
 		vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
 		vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
 		vkDestroyFence(device, inFlightFences[i], nullptr);
 	}
-
 	vkDestroyCommandPool(device, commandPool, nullptr); // delete the command pool object
-
-  	for (auto framebuffer : swapchainFramebuffers) // delete all framebuffers
-      vkDestroyFramebuffer(device, framebuffer, nullptr);
-	vkDestroyPipeline(device, graphicsPipeline, nullptr); // delete the pipeline object
-	vkDestroyPipelineLayout(device, pipelineLayout, nullptr); // delete the pipeline layout
-	vkDestroyRenderPass(device, renderPass, nullptr);  // delete the render pass object
-
-	for (auto imageView : swapchainImageViews)
-		vkDestroyImageView(device, imageView, nullptr); // delete each of the swapchain image views
-	vkDestroySwapchainKHR(device, swapchain, nullptr); // delete the current swapchain
-
 	if( enableValidationLayers ) // delete debug callback
 		DestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
 
