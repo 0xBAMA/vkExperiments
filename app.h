@@ -85,6 +85,10 @@ private:
 		create_image_views();
 		create_render_pass();
 		create_graphics_pipeline();
+		create_framebuffers();
+		create_command_pool();
+		create_command_buffers();
+		create_semaphores();
 	}
 
 //  ╦ ╦┌─┐┬  ┌─┐┌─┐┬─┐  ╔═╗┬ ┬┌┐┌┌─┐┌┬┐┬┌─┐┌┐┌┌─┐
@@ -142,7 +146,23 @@ private:
 	VkRenderPass renderPass;
 	void create_render_pass();
 
+	// framebuffers
+	std::vector<VkFramebuffer> swapchainFramebuffers;
+	void create_framebuffers();
+
+	// command pool/buffers
+	std::vector<VkCommandBuffer> commandBuffers;
+	VkCommandPool commandPool;
+	void create_command_pool(); // pool manages the memory that is used by buffers
+	void create_command_buffers(); // allocated out of the pool
+
+	// synchronization objects
+	VkSemaphore imageAvailableSemaphore;
+	VkSemaphore renderFinishedSemaphore;
+	void create_semaphores();
+
 	// contains program main loop behavior
+	void draw_frame();
 	void main_loop();
 
 	// just handling escape event to close the window more easily right now

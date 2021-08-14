@@ -634,11 +634,89 @@ void app::create_render_pass() {
 		throw std::runtime_error("Failed to create render pass!");
 }
 
+void app::create_framebuffers() {
+	swapchainFramebuffers.resize(swapchainImageViews.size());
+	for (size_t i = 0; i < swapchainImageViews.size(); i++) {
+		VkImageView attachments[] = {swapchainImageViews[i]};
+		VkFramebufferCreateInfo framebufferInfo{};
+		framebufferInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+		framebufferInfo.renderPass = renderPass;
+		framebufferInfo.attachmentCount = 1;
+		framebufferInfo.pAttachments = attachments;
+		framebufferInfo.width = swapchainExtent.width;
+		framebufferInfo.height = swapchainExtent.height;
+		framebufferInfo.layers = 1;
+		if (vkCreateFramebuffer(device, &framebufferInfo, nullptr, &swapchainFramebuffers[i]) != VK_SUCCESS)
+			throw std::runtime_error("failed to create framebuffer!");
+	}
+}
+
+void app::create_command_pool() {
+	QueueFamilyIndices queueFamilyIndices = findQueueFamilies(physical_device);
+
+	VkCommandPoolCreateInfo poolInfo{};
+	poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
+	poolInfo.queueFamilyIndex = queueFamilyIndices.graphics_family.value();
+	poolInfo.flags = 0; // Optional  - there's a few usage hint flags that can go here
+
+	if (vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool) != VK_SUCCESS)
+   	throw std::runtime_error("Failed to create command pool!");
+}
+
+void app::create_command_buffers() {
+	commandBuffers.resize(swapchainFramebuffers.size());
+	VkCommandBufferAllocateInfo allocInfo{};
+	allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+	allocInfo.commandPool = commandPool;
+	allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+	allocInfo.commandBufferCount = (uint32_t) commandBuffers.size();
+
+	if (vkAllocateCommandBuffers(device, &allocInfo, commandBuffers.data()) != VK_SUCCESS)
+		throw std::runtime_error("Failed to allocate command buffers!");
+
+	for (size_t i = 0; i < commandBuffers.size(); i++) {
+		VkCommandBufferBeginInfo beginInfo{};
+		beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+		beginInfo.flags = 0; // some different usage hints, currently irrelevant
+		beginInfo.pInheritanceInfo = nullptr; // Optional
+		if (vkBeginCommandBuffer(commandBuffers[i], &beginInfo) != VK_SUCCESS)
+			throw std::runtime_error("failed to begin recording command buffer!");
+
+		VkRenderPassBeginInfo renderPassInfo{};
+		renderPassInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+		renderPassInfo.renderPass = renderPass;
+		renderPassInfo.framebuffer = swapchainFramebuffers[i];
+		renderPassInfo.renderArea.offset = {0, 0};
+		renderPassInfo.renderArea.extent = swapchainExtent;
+
+		VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+		renderPassInfo.clearValueCount = 1;
+		renderPassInfo.pClearValues = &clearColor;
+
+		vkCmdBeginRenderPass(commandBuffers[i], &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
+		vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, graphicsPipeline);
+		vkCmdDraw(commandBuffers[i], 3, 1, 0, 0); // the actual draw call
+		vkCmdEndRenderPass(commandBuffers[i]);
+
+		if (vkEndCommandBuffer(commandBuffers[i]) != VK_SUCCESS)
+			throw std::runtime_error("Failed to record command buffer!");
+	}
+}
+
+void app::create_semaphores() {
+
+}
+
+
+void app::draw_frame() {
+
+}
 
 // main loop for runtime operations (input, etc)
 void app::main_loop() {
 	while( !glfwWindowShouldClose( window ) ) {
 		glfwPollEvents(); // handle all the events off the queue
+		draw_frame(); // draw a frame to the window
 	}
 }
 
@@ -650,6 +728,11 @@ void app::key_callback(GLFWwindow* window, int key, int scancode, int action, in
 
 void app::cleanup() {
 	// This function is called on program shutdown to deallocate all GLFW+Vulkan resources
+
+	vkDestroyCommandPool(device, commandPool, nullptr); // delete the command pool object
+
+  	for (auto framebuffer : swapchainFramebuffers) // delete all framebuffers
+      vkDestroyFramebuffer(device, framebuffer, nullptr);
 	vkDestroyPipeline(device, graphicsPipeline, nullptr); // delete the pipeline object
 	vkDestroyPipelineLayout(device, pipelineLayout, nullptr); // delete the pipeline layout
 	vkDestroyRenderPass(device, renderPass, nullptr);  // delete the render pass object
