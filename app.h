@@ -24,6 +24,8 @@ using std::endl, std::cout, std::cin, std::cerr;
 constexpr uint32_t width  = 720;
 constexpr uint32_t height = 480;
 
+constexpr int MAX_FRAMES_IN_FLIGHT = 2;
+
 #define DEBUG
 #ifdef DEBUG
 constexpr bool enableValidationLayers = true;
@@ -88,7 +90,7 @@ private:
 		create_framebuffers();
 		create_command_pool();
 		create_command_buffers();
-		create_semaphores();
+		create_sync_objects();
 	}
 
 //  ╦ ╦┌─┐┬  ┌─┐┌─┐┬─┐  ╔═╗┬ ┬┌┐┌┌─┐┌┬┐┬┌─┐┌┐┌┌─┐
@@ -157,9 +159,12 @@ private:
 	void create_command_buffers(); // allocated out of the pool
 
 	// synchronization objects
-	VkSemaphore imageAvailableSemaphore;
-	VkSemaphore renderFinishedSemaphore;
-	void create_semaphores();
+	std::vector<VkSemaphore> imageAvailableSemaphores;
+	std::vector<VkSemaphore> renderFinishedSemaphores;
+	std::vector<VkFence> inFlightFences;
+	std::vector<VkFence> imagesInFlight;
+	void create_sync_objects();
+	size_t currentFrame = 0;
 
 	// contains program main loop behavior
 	void draw_frame();
@@ -167,6 +172,7 @@ private:
 
 	// just handling escape event to close the window more easily right now
 	static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+	static void framebufferResizeCallback(GLFWwindow* window, int width, int height);
 
 	// destroying vk objects and shutting down glfw
 	void cleanup();
